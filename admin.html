@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>방문 분석 — 배우 박지오</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#08080a">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%2308080a'/><text y='72' x='50' text-anchor='middle' font-size='58' font-family='Georgia,serif' fill='%23c9ae82'>A</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Noto+Serif+KR:wght@200;300;400&family=Noto+Sans+KR:wght@200;300;400;500&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --ink:#08080a; --surface:#0e0e11; --surface-2:#141418;
+  --line:rgba(237,233,226,.10); --line-soft:rgba(237,233,226,.055);
+  --paper:#ede9e2; --paper-dim:#a9a49b; --paper-faint:#6d6960;
+  --gold:#c9ae82; --gold-deep:#a98d60; --gold-glow:rgba(201,174,130,.14);
+
+  /* chart marks — validated against the #0e0e11 surface
+     (lightness band, chroma floor, CVD ΔE 23.7, normal-vision ΔE 25.3, ≥3:1) */
+  --series-1:#bb8629;   /* 방문 */
+  --series-2:#4691d8;   /* 순 방문자 */
+  --grid:rgba(237,233,226,.085);
+
+  --serif:'Cormorant Garamond','Noto Serif KR',Georgia,serif;
+  --kserif:'Noto Serif KR',serif;
+  --sans:'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --gut:clamp(16px,4vw,52px);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--ink);color:var(--paper);font-family:var(--sans);font-weight:300;
+  line-height:1.7;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button,input{font:inherit;color:inherit}
+button{background:none;border:none;cursor:pointer}
+::selection{background:var(--gold);color:var(--ink)}
+:focus-visible{outline:1px solid var(--gold);outline-offset:3px;border-radius:2px}
+.wrap{max-width:1280px;margin:0 auto;padding-inline:var(--gut)}
+.num{font-variant-numeric:lining-nums tabular-nums;font-feature-settings:"lnum" 1,"tnum" 1}
+
+/* ── login ─────────────────────────────────────────────────────────────── */
+.gate{min-height:100svh;display:grid;place-items:center;padding:var(--gut);
+  background:radial-gradient(70% 55% at 50% 22%,rgba(201,174,130,.06),transparent 62%)}
+.gate-card{width:min(410px,100%);border:1px solid var(--line);border-radius:4px;
+  background:linear-gradient(150deg,#111114,#0a0a0c);padding:clamp(26px,5vw,42px);
+  box-shadow:0 40px 80px -36px rgba(0,0,0,.92)}
+.gate-mark{font-family:var(--serif);font-size:1.9rem;color:var(--gold);line-height:1;letter-spacing:.05em}
+.gate-t{font-family:var(--kserif);font-weight:200;font-size:1.5rem;margin-top:1.1rem;letter-spacing:-.01em}
+.gate-s{font-size:.8rem;color:var(--paper-faint);margin-top:.35rem;letter-spacing:.04em}
+.field{margin-top:1.4rem}
+.field label{display:block;font-family:var(--serif);font-size:.62rem;letter-spacing:.3em;
+  text-transform:uppercase;color:var(--paper-faint);margin-bottom:.5rem}
+.field input{width:100%;background:rgba(237,233,226,.035);border:1px solid var(--line);
+  border-radius:3px;padding:.8rem .9rem;font-size:.92rem;letter-spacing:.02em;
+  transition:border-color .4s var(--ease),background .4s var(--ease)}
+.field input:focus{outline:none;border-color:var(--gold-deep);background:rgba(237,233,226,.055)}
+.gate-btn{width:100%;margin-top:1.6rem;background:var(--gold);color:var(--ink);
+  border-radius:999px;padding:.82rem;font-size:.84rem;font-weight:400;letter-spacing:.16em;
+  transition:background .4s var(--ease)}
+.gate-btn:hover{background:#d8bd92}
+.gate-err{margin-top:1rem;font-size:.8rem;color:#e08a80;min-height:1.3em}
+.gate-note{margin-top:1.6rem;padding-top:1.1rem;border-top:1px solid var(--line-soft);
+  font-size:.72rem;line-height:1.75;color:var(--paper-faint)}
+
+/* ── shell ─────────────────────────────────────────────────────────────── */
+.app{display:none}
+.app.on{display:block}
+.top{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:14px;
+  align-items:center;justify-content:space-between;padding:14px var(--gut);
+  background:rgba(8,8,10,.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--line-soft)}
+.top .brand{display:flex;align-items:baseline;gap:.7rem}
+.top .brand b{font-family:var(--kserif);font-weight:300;font-size:1rem;letter-spacing:.3em}
+.top .brand span{font-family:var(--serif);font-size:.62rem;letter-spacing:.3em;
+  text-transform:uppercase;color:var(--paper-faint)}
+.top-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+.btn{display:inline-flex;align-items:center;gap:.5em;border:1px solid var(--line);
+  border-radius:999px;padding:.5rem 1rem;font-size:.75rem;letter-spacing:.1em;color:var(--paper-dim);
+  transition:border-color .4s var(--ease),color .4s var(--ease),background .4s var(--ease)}
+.btn:hover{border-color:var(--gold);color:var(--gold);background:var(--gold-glow)}
+.btn[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:var(--ink);font-weight:400}
+.btn-danger:hover{border-color:#c4685e;color:#e08a80;background:rgba(196,104,94,.1)}
+
+.banner{margin:18px 0 0;border:1px solid var(--line);border-left:2px solid var(--gold-deep);
+  border-radius:3px;padding:.85rem 1.1rem;font-size:.8rem;color:var(--paper-dim);
+  background:rgba(201,174,130,.045);line-height:1.7}
+.banner b{color:var(--gold);font-weight:400}
+
+section.blk{padding-block:clamp(26px,4vw,40px)}
+.blk-head{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:baseline;justify-content:space-between;margin-bottom:1.1rem}
+.eyebrow{font-family:var(--serif);font-size:.64rem;letter-spacing:.34em;text-transform:uppercase;
+  color:var(--gold);display:flex;align-items:center;gap:.9em}
+.eyebrow::before{content:'';width:26px;height:1px;background:var(--gold-deep);opacity:.6}
+h2.t{font-family:var(--kserif);font-weight:200;font-size:clamp(1.25rem,2.6vw,1.7rem);letter-spacing:-.01em}
+.sub{font-size:.76rem;color:var(--paper-faint)}
+
+/* ── KPI ───────────────────────────────────────────────────────────────── */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px}
+.kpi{border:1px solid var(--line);border-radius:3px;padding:clamp(14px,2vw,20px);
+  background:linear-gradient(160deg,rgba(237,233,226,.025),transparent 70%)}
+.kpi .k{font-family:var(--serif);font-size:.6rem;letter-spacing:.28em;text-transform:uppercase;color:var(--paper-faint)}
+.kpi .v{font-family:var(--serif);font-size:clamp(1.9rem,4vw,2.7rem);font-weight:300;line-height:1.1;margin-top:.5rem}
+.kpi .v small{font-size:.38em;letter-spacing:.1em;color:var(--paper-dim);margin-left:.35em}
+.kpi .d{font-size:.72rem;color:var(--paper-faint);margin-top:.3rem}
+.kpi .d.up{color:#7fb98a}.kpi .d.dn{color:#d08a82}
+
+/* ── summary ───────────────────────────────────────────────────────────── */
+.summary{border:1px solid var(--line);border-radius:3px;padding:clamp(18px,3vw,26px);
+  background:var(--surface)}
+.summary li{list-style:none;display:flex;gap:.85rem;padding:.55rem 0;font-size:.9rem;
+  color:var(--paper-dim);line-height:1.8}
+.summary li>span{flex:1}   /* keep the sentence as ONE flex item, not one per <b> */
+.summary li+li{border-top:1px solid var(--line-soft)}
+.summary li::before{content:'';flex:none;width:5px;height:5px;border-radius:50%;
+  background:var(--gold-deep);margin-top:.7rem}
+.summary b{color:var(--paper);font-weight:400}
+
+/* ── charts ────────────────────────────────────────────────────────────── */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:10px}
+.card{border:1px solid var(--line);border-radius:3px;background:var(--surface);
+  padding:clamp(16px,2.4vw,22px);position:relative}
+.card h3{font-family:var(--kserif);font-weight:300;font-size:.98rem;letter-spacing:-.005em}
+.card .cap{font-size:.72rem;color:var(--paper-faint);margin-top:.15rem}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:.8rem}
+.legend i{display:inline-flex;align-items:center;gap:.5em;font-style:normal;
+  font-size:.74rem;color:var(--paper-dim);letter-spacing:.04em}
+.legend i::before{content:'';width:10px;height:10px;border-radius:2px;background:var(--c)}
+.chart{margin-top:1rem;position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.tip{position:absolute;z-index:8;pointer-events:none;opacity:0;transform:translate(-50%,-115%);
+  background:rgba(14,14,17,.97);border:1px solid var(--line);border-radius:3px;
+  padding:.55rem .75rem;font-size:.76rem;white-space:nowrap;letter-spacing:.02em;
+  box-shadow:0 14px 34px -14px rgba(0,0,0,.9);transition:opacity .18s}
+.tip.on{opacity:1}
+.tip .th{font-family:var(--serif);font-size:.64rem;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--paper-faint);display:block;margin-bottom:.3rem}
+.tip .r{display:flex;align-items:center;gap:.5em;color:var(--paper-dim)}
+.tip .r b{color:var(--paper);font-weight:400;margin-left:auto;padding-left:1.1em}
+.tip .r::before{content:'';width:8px;height:8px;border-radius:2px;background:var(--c)}
+.empty{padding:2.6rem 1rem;text-align:center;color:var(--paper-faint);font-size:.84rem}
+
+/* ── bar list ──────────────────────────────────────────────────────────── */
+.bars{margin-top:1rem;display:grid;gap:9px}
+.bar{display:grid;grid-template-columns:minmax(74px,auto) 1fr auto;gap:12px;align-items:center;
+  font-size:.8rem}
+.bar .lbl{color:var(--paper-dim);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .track{height:12px;background:rgba(237,233,226,.05);border-radius:2px;overflow:hidden}
+.bar .fill{display:block;height:100%;background:var(--series-1);border-radius:0 3px 3px 0;
+  transition:width .7s var(--ease)}
+.bar .val{color:var(--paper);letter-spacing:.02em;min-width:5.4em;text-align:right}
+.bar .val span{color:var(--paper-faint);margin-left:.45em;font-size:.92em}
+
+/* ── table ─────────────────────────────────────────────────────────────── */
+.tblwrap{margin-top:1rem;border:1px solid var(--line);border-radius:3px;overflow:auto;max-height:470px}
+table{width:100%;border-collapse:collapse;font-size:.79rem;min-width:660px}
+thead th{position:sticky;top:0;background:var(--surface-2);text-align:left;
+  font-family:var(--serif);font-size:.62rem;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--paper-faint);font-weight:400;padding:.72rem .85rem;border-bottom:1px solid var(--line);z-index:2}
+tbody td{padding:.62rem .85rem;border-bottom:1px solid var(--line-soft);color:var(--paper-dim);white-space:nowrap}
+tbody tr:hover td{background:rgba(237,233,226,.028);color:var(--paper)}
+.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;
+  padding:.1rem .55rem;font-size:.68rem;letter-spacing:.06em}
+.pill.qr{border-color:var(--gold-deep);color:var(--gold)}
+
+.foot{padding:26px var(--gut) 40px;border-top:1px solid var(--line-soft);
+  font-size:.72rem;color:var(--paper-faint);display:flex;flex-wrap:wrap;gap:10px 22px;justify-content:space-between}
+
+@media(prefers-reduced-motion:reduce){*{transition-duration:.001ms!important;animation-duration:.001ms!important}}
+@media print{.top,.top-actions,.btn{display:none!important}body{background:#fff;color:#111}}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ LOGIN ══════════════ -->
+<div class="gate" id="gate">
+  <form class="gate-card" id="loginForm" autocomplete="on">
+    <div class="gate-mark">JP</div>
+    <div class="gate-t">방문 분석 콘솔</div>
+    <div class="gate-s">배우 박지오 · Visitor Analytics</div>
+
+    <div class="field">
+      <label for="uid">아이디</label>
+      <input id="uid" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+    </div>
+    <div class="field">
+      <label for="upw">비밀번호</label>
+      <input id="upw" name="password" type="password" autocomplete="current-password" required>
+    </div>
+
+    <button class="gate-btn" type="submit">로그인</button>
+    <div class="gate-err" id="loginErr" role="alert"></div>
+
+    <p class="gate-note">
+      이 페이지는 정적 사이트에서 동작하므로 로그인은 <b>가벼운 가림막</b>일 뿐,
+      서버 인증이 아닙니다. 방문 통계 외에 민감한 정보는 두지 마세요.
+    </p>
+  </form>
+</div>
+
+<!-- ══════════════ DASHBOARD ══════════════ -->
+<div class="app" id="app">
+  <header class="top">
+    <div class="brand"><b>박지오</b><span>Analytics</span></div>
+    <div class="top-actions">
+      <button class="btn" data-range="7">7일</button>
+      <button class="btn" data-range="30">30일</button>
+      <button class="btn" data-range="90">90일</button>
+      <button class="btn" data-range="0">전체</button>
+      <button class="btn" id="csvBtn">CSV</button>
+      <button class="btn" id="sampleBtn" aria-pressed="false">샘플</button>
+      <button class="btn btn-danger" id="wipeBtn">초기화</button>
+      <button class="btn" id="outBtn">로그아웃</button>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="banner" id="modeBanner"></div>
+  </div>
+
+  <div class="wrap">
+    <section class="blk">
+      <div class="blk-head">
+        <div>
+          <p class="eyebrow">Overview</p>
+          <h2 class="t">누적 방문 요약</h2>
+        </div>
+        <p class="sub" id="rangeLabel"></p>
+      </div>
+      <div class="kpis" id="kpis"></div>
+    </section>
+
+    <section class="blk">
+      <div class="blk-head">
+        <div>
+          <p class="eyebrow">Summary</p>
+          <h2 class="t">한눈에 읽는 분석</h2>
+        </div>
+      </div>
+      <ul class="summary" id="summary"></ul>
+    </section>
+
+    <section class="blk">
+      <div class="card">
+        <h3>일별 방문 추이</h3>
+        <p class="cap">선택한 기간의 하루당 방문 수와 순 방문자 수</p>
+        <div class="legend">
+          <i style="--c:var(--series-1)">방문</i>
+          <i style="--c:var(--series-2)">순 방문자</i>
+        </div>
+        <div class="chart" id="trendWrap"><div class="tip" id="trendTip"></div></div>
+      </div>
+    </section>
+
+    <section class="blk">
+      <div class="grid2">
+        <div class="card">
+          <h3>유입 경로</h3>
+          <p class="cap">QR·직접·검색·SNS 등 방문자가 들어온 경로</p>
+          <div class="bars" id="srcBars"></div>
+        </div>
+        <div class="card">
+          <h3>시간대별 방문</h3>
+          <p class="cap">0시–23시, 방문자 현지 시각 기준</p>
+          <div class="chart" id="hourWrap"><div class="tip" id="hourTip"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="blk">
+      <div class="grid2">
+        <div class="card">
+          <h3>기기</h3>
+          <p class="cap">모바일 · 태블릿 · 데스크톱</p>
+          <div class="bars" id="devBars"></div>
+        </div>
+        <div class="card">
+          <h3>브라우저</h3>
+          <p class="cap">상위 6개</p>
+          <div class="bars" id="brBars"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="blk">
+      <div class="blk-head">
+        <div>
+          <p class="eyebrow">Log</p>
+          <h2 class="t">최근 방문 기록</h2>
+        </div>
+        <p class="sub" id="logCount"></p>
+      </div>
+      <div class="tblwrap">
+        <table>
+          <thead><tr>
+            <th>시각</th><th>경로</th><th>유입</th><th>기기</th>
+            <th>브라우저</th><th>OS</th><th>구분</th><th>참조</th>
+          </tr></thead>
+          <tbody id="logBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <footer class="foot">
+    <span>배우 박지오 · 방문 분석 콘솔</span>
+    <span id="footMode"></span>
+  </footer>
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/analytics.js"></script>
+<script>
+(() => {
+  'use strict';
+  const $  = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const esc = s => String(s == null ? '' : s)
+    .replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  /* ── auth ──────────────────────────────────────────────────────────────
+     sha256("<id>:<pw>"). A static page cannot verify a secret, so this only
+     keeps the dashboard out of casual view — anyone can read the page source. */
+  const AUTH_HASH = '80eb602c4808a814712b1d3f4a2517bf9dfef1439f5f826fc7a5ad4a72d1de3a';
+  const SESSION_KEY = 'pj_admin_ok_v1';
+
+  async function sha256(str) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  $('#loginForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const err = $('#loginErr');
+    if (!crypto || !crypto.subtle) {
+      err.textContent = 'https:// 또는 localhost 에서 열어야 로그인할 수 있습니다.';
+      return;
+    }
+    try {
+      const h = await sha256($('#uid').value.trim() + ':' + $('#upw').value);
+      if (h !== AUTH_HASH) { err.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.'; return; }
+      try { sessionStorage.setItem(SESSION_KEY, '1'); } catch (_) {}
+      enter();
+    } catch (_) {
+      err.textContent = '로그인 처리 중 문제가 발생했습니다.';
+    }
+  });
+
+  $('#outBtn').addEventListener('click', () => {
+    try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
+    location.reload();
+  });
+
+  function enter() {
+    $('#gate').style.display = 'none';
+    $('#app').classList.add('on');
+    load();
+  }
+  try { if (sessionStorage.getItem(SESSION_KEY) === '1') enter(); } catch (_) {}
+
+  /* ── state ─────────────────────────────────────────────────────────── */
+  let RAW = [];        // every visit we know about
+  let SAMPLE = false;  // showing generated demo data instead
+  let RANGE = 30;      // days; 0 = all
+
+  const LABEL = {
+    qr: 'QR 코드', direct: '직접 방문', search: '검색', sns: 'SNS',
+    referral: '외부 링크', internal: '사이트 내부'
+  };
+  const DEV = { mobile: '모바일', tablet: '태블릿', desktop: '데스크톱' };
+
+  const dayKey = t => {
+    const d = new Date(t);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  };
+  const fmt = n => n.toLocaleString('ko-KR');
+
+  /** Korean particle selection — depends on whether the last syllable
+      ends in a consonant (받침). e.g. 직접 방문 -> 으로, QR 코드 -> 로 */
+  function josa(word, withBatchim, withoutBatchim) {
+    const ch = String(word).trim().slice(-1).charCodeAt(0);
+    const isHangul = ch >= 0xac00 && ch <= 0xd7a3;
+    const batchim = isHangul ? (ch - 0xac00) % 28 !== 0 : /[013678lmnr]$/i.test(String(word).slice(-1));
+    return batchim ? withBatchim : withoutBatchim;
+  }
+
+  /* ── demo data, so the dashboard is readable before real traffic ─────── */
+  function sampleVisits() {
+    let seed = 20260917;
+    const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    const pick = (arr, w) => {
+      let r = rnd() * w.reduce((a, b) => a + b, 0);
+      for (let i = 0; i < arr.length; i++) { if ((r -= w[i]) <= 0) return arr[i]; }
+      return arr[0];
+    };
+    const out = [], now = Date.now(), DAY = 864e5;
+    const vids = Array.from({ length: 140 }, (_, i) => 'v' + i);
+    for (let d = 89; d >= 0; d--) {
+      const weekday = new Date(now - d * DAY).getDay();
+      const base = 6 + Math.round(rnd() * 9) + (weekday === 0 || weekday === 6 ? -2 : 2);
+      const recency = 1 + (89 - d) / 120;          // traffic grows over time
+      const n = Math.max(0, Math.round(base * recency));
+      for (let i = 0; i < n; i++) {
+        const HOURS = Array.from({ length: 24 }, (_, h) => h);
+        const HW = [2, 1, 1, 1, 1, 1, 2, 4, 6, 8, 9, 9, 10, 9, 9, 10, 11, 12, 14, 16, 17, 15, 10, 5];
+        const hour = pick(HOURS, HW);
+        const t = now - d * DAY + (hour - new Date(now).getHours()) * 36e5 + Math.round(rnd() * 36e5);
+        const dev = pick(['mobile', 'desktop', 'tablet'], [68, 26, 6]);
+        out.push({
+          t: Math.min(t, now),
+          p: pick(['/', '/#works', '/#card'], [72, 16, 12]),
+          src: pick(['qr', 'direct', 'search', 'sns', 'referral'], [24, 30, 18, 22, 6]),
+          ref: '',
+          d: dev,
+          b: dev === 'mobile' ? pick(['Safari', 'Chrome', 'In-app', 'Samsung'], [38, 30, 22, 10])
+                              : pick(['Chrome', 'Safari', 'Edge', 'Whale'], [52, 24, 14, 10]),
+          os: dev === 'mobile' ? pick(['iOS', 'Android'], [56, 44]) : pick(['Windows', 'macOS'], [58, 42]),
+          lang: 'ko-KR', sw: dev === 'mobile' ? 390 : 1440,
+          vid: vids[Math.floor(rnd() * vids.length)],
+          nv: rnd() < 0.72 ? 'new' : 'ret', tz: 9
+        });
+      }
+    }
+    return out.sort((a, b) => a.t - b.t);
+  }
+
+  /* ── load ──────────────────────────────────────────────────────────── */
+  async function load() {
+    RAW = SAMPLE ? sampleVisits() : await PJA.all();
+    render();
+  }
+
+  function inRange(list) {
+    if (!RANGE) return list;
+    const from = Date.now() - RANGE * 864e5;
+    return list.filter(v => v.t >= from);
+  }
+
+  /* ── render ────────────────────────────────────────────────────────── */
+  function render() {
+    const rows = inRange(RAW).filter(v => v.src !== 'internal');
+    const mode = PJA.mode();
+
+    $('#modeBanner').innerHTML = SAMPLE
+      ? '<b>샘플 데이터</b>를 보고 있습니다. 실제 기록이 아니며 저장되지 않습니다. 「샘플」을 다시 눌러 끄세요.'
+      : mode === 'remote'
+        ? '<b>수집 서버 연결됨</b> — 모든 방문자의 기록이 합산됩니다.'
+        : '<b>이 브라우저에만 저장 중</b> — 정적 페이지라 기본값은 기기별 기록입니다. 모든 방문자를 합산하려면 <code>assets/collector.gs</code> 안내대로 수집 주소를 연결하세요.';
+    $('#footMode').textContent = SAMPLE ? '샘플 보기' : (mode === 'remote' ? '원격 수집' : '로컬 저장');
+    $('#rangeLabel').textContent = RANGE ? `최근 ${RANGE}일` : '전체 기간';
+    $$('[data-range]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.range === RANGE)));
+    $('#sampleBtn').setAttribute('aria-pressed', String(SAMPLE));
+
+    kpis(rows);
+    trend(rows);
+    barList('#srcBars', tally(rows, 'src'), rows.length, k => LABEL[k] || k);
+    barList('#devBars', tally(rows, 'd'), rows.length, k => DEV[k] || k);
+    barList('#brBars', tally(rows, 'b').slice(0, 6), rows.length, k => k);
+    hours(rows);
+    summary(rows);
+    logTable(rows);
+  }
+
+  function tally(rows, key) {
+    const m = new Map();
+    rows.forEach(v => m.set(v[key] || '—', (m.get(v[key] || '—') || 0) + 1));
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  }
+
+  function kpis(rows) {
+    const uniq = new Set(rows.map(v => v.vid)).size;
+    const today = dayKey(Date.now());
+    const todayN = rows.filter(v => dayKey(v.t) === today).length;
+    const qr = rows.filter(v => v.src === 'qr').length;
+    const qrPct = rows.length ? Math.round(qr / rows.length * 100) : 0;
+
+    // previous equal-length window, for the delta
+    const span = (RANGE || 90) * 864e5;
+    const prev = RAW.filter(v => v.t >= Date.now() - span * 2 && v.t < Date.now() - span && v.src !== 'internal').length;
+    const delta = prev ? Math.round((rows.length - prev) / prev * 100) : null;
+
+    const cards = [
+      ['Total visits', fmt(rows.length), '건', delta == null ? '이전 기간 데이터 없음'
+        : `이전 기간 대비 ${delta >= 0 ? '+' : ''}${delta}%`, delta == null ? '' : (delta >= 0 ? 'up' : 'dn')],
+      ['Unique', fmt(uniq), '명', '중복 제외 방문자', ''],
+      ['Today', fmt(todayN), '건', '오늘 0시 기준', ''],
+      ['QR share', qrPct + '%', '', `QR 유입 ${fmt(qr)}건`, ''],
+      ['Per day', rows.length ? (rows.length / Math.max(1, dayspan(rows))).toFixed(1) : '0', '건', '기간 내 일평균', '']
+    ];
+    $('#kpis').innerHTML = cards.map(([k, v, u, d, cls]) => `
+      <div class="kpi">
+        <div class="k">${esc(k)}</div>
+        <div class="v num">${esc(v)}${u ? `<small>${esc(u)}</small>` : ''}</div>
+        <div class="d ${cls}">${esc(d)}</div>
+      </div>`).join('');
+  }
+
+  function dayspan(rows) {
+    if (!rows.length) return 1;
+    return Math.max(1, Math.round((rows[rows.length - 1].t - rows[0].t) / 864e5) + 1);
+  }
+
+  /* ── daily trend: area (visits) + line (unique) ─────────────────────── */
+  function trend(rows) {
+    const wrap = $('#trendWrap'), tip = $('#trendTip');
+    const days = RANGE || Math.max(7, dayspan(rows));
+    const buckets = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 864e5);
+      buckets.push({ key: dayKey(d.getTime()), date: d, n: 0, u: new Set() });
+    }
+    const idx = new Map(buckets.map((b, i) => [b.key, i]));
+    rows.forEach(v => {
+      const i = idx.get(dayKey(v.t));
+      if (i != null) { buckets[i].n++; buckets[i].u.add(v.vid); }
+    });
+    const data = buckets.map(b => ({ date: b.date, key: b.key, n: b.n, u: b.u.size }));
+
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="empty">아직 기록된 방문이 없습니다.</div>';
+      wrap.appendChild(tip); return;
+    }
+
+    const W = Math.max(320, wrap.clientWidth || 720), H = 260;
+    const P = { t: 14, r: 16, b: 30, l: 40 };
+    const iw = W - P.l - P.r, ih = H - P.t - P.b;
+    const max = Math.max(4, ...data.map(d => d.n));
+    const nice = niceMax(max);
+    const X = i => P.l + (data.length === 1 ? iw / 2 : i * iw / (data.length - 1));
+    const Y = v => P.t + ih - (v / nice) * ih;
+
+    const ticks = [0, 0.25, 0.5, 0.75, 1].map(f => Math.round(nice * f));
+    const grid = ticks.map(v => `<line x1="${P.l}" x2="${W - P.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)" stroke-width="1"/>
+      <text x="${P.l - 9}" y="${Y(v) + 4}" text-anchor="end" font-size="10" fill="var(--paper-faint)" class="num">${v}</text>`).join('');
+
+    const line = data.map((d, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(d.n).toFixed(1)}`).join(' ');
+    const area = `${line} L${X(data.length - 1).toFixed(1)} ${Y(0)} L${X(0).toFixed(1)} ${Y(0)} Z`;
+    const uline = data.map((d, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(d.u).toFixed(1)}`).join(' ');
+
+    // x labels: about six, evenly spaced
+    const step = Math.max(1, Math.round(data.length / 6));
+    const xlab = data.map((d, i) => (i % step === 0 || i === data.length - 1)
+      ? `<text x="${X(i)}" y="${H - 8}" text-anchor="middle" font-size="10" fill="var(--paper-faint)" class="num">${d.date.getMonth() + 1}/${d.date.getDate()}</text>` : '').join('');
+
+    const last = data[data.length - 1];
+    wrap.innerHTML = `
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="일별 방문 추이">
+        <defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--series-1)" stop-opacity=".34"/>
+          <stop offset="100%" stop-color="var(--series-1)" stop-opacity="0"/>
+        </linearGradient></defs>
+        ${grid}${xlab}
+        <path d="${area}" fill="url(#ga)"/>
+        <path d="${line}" fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        <path d="${uline}" fill="none" stroke="var(--series-2)" stroke-width="2" stroke-dasharray="4 3" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="${X(data.length - 1)}" cy="${Y(last.n)}" r="3.5" fill="var(--series-1)" stroke="var(--surface)" stroke-width="2"/>
+        <circle cx="${X(data.length - 1)}" cy="${Y(last.u)}" r="3.5" fill="var(--series-2)" stroke="var(--surface)" stroke-width="2"/>
+        <text x="${X(data.length - 1)}" y="${Y(last.n) - 11}" text-anchor="end" font-size="11" fill="var(--paper)" class="num">${last.n}</text>
+        <line id="tcross" x1="0" x2="0" y1="${P.t}" y2="${P.t + ih}" stroke="var(--gold-deep)" stroke-width="1" opacity="0"/>
+        <rect id="thit" x="${P.l}" y="${P.t}" width="${iw}" height="${ih}" fill="transparent"/>
+      </svg>`;
+    wrap.appendChild(tip);
+
+    const svg = wrap.querySelector('svg'), cross = wrap.querySelector('#tcross');
+    wrap.querySelector('#thit').addEventListener('mousemove', ev => {
+      const r = svg.getBoundingClientRect();
+      const sx = (ev.clientX - r.left) * (W / r.width);
+      let i = Math.round((sx - P.l) / (iw / Math.max(1, data.length - 1)));
+      i = Math.max(0, Math.min(data.length - 1, i));
+      const d = data[i];
+      cross.setAttribute('x1', X(i)); cross.setAttribute('x2', X(i)); cross.setAttribute('opacity', '.55');
+      tip.innerHTML = `<span class="th">${d.date.getFullYear()}.${d.date.getMonth() + 1}.${d.date.getDate()}</span>
+        <span class="r" style="--c:var(--series-1)">방문<b class="num">${d.n}</b></span>
+        <span class="r" style="--c:var(--series-2)">순 방문자<b class="num">${d.u}</b></span>`;
+      tip.style.left = (X(i) / W * 100) + '%';
+      tip.style.top = (Y(Math.max(d.n, d.u)) / H * r.height) + 'px';
+      tip.classList.add('on');
+    });
+    wrap.querySelector('#thit').addEventListener('mouseleave', () => {
+      tip.classList.remove('on'); cross.setAttribute('opacity', '0');
+    });
+  }
+
+  /** A top-of-axis that divides into 4 clean intervals. */
+  function niceMax(v) {
+    const raw = Math.max(1, v) / 4;
+    const p = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 2.5, 5, 10].map(m => m * p).find(s => s >= raw) || 10 * p;
+    return step * 4;
+  }
+
+  /* ── horizontal bars (single hue; length carries the magnitude) ─────── */
+  function barList(sel, entries, total, label) {
+    const el = $(sel);
+    if (!entries.length) { el.innerHTML = '<div class="empty">데이터 없음</div>'; return; }
+    const max = entries[0][1];
+    el.innerHTML = entries.map(([k, n]) => `
+      <div class="bar">
+        <span class="lbl">${esc(label(k))}</span>
+        <span class="track"><span class="fill" style="width:${(n / max * 100).toFixed(1)}%"></span></span>
+        <span class="val num">${fmt(n)}<span>${total ? Math.round(n / total * 100) : 0}%</span></span>
+      </div>`).join('');
+  }
+
+  /* ── hour-of-day columns ───────────────────────────────────────────── */
+  function hours(rows) {
+    const wrap = $('#hourWrap'), tip = $('#hourTip');
+    const counts = new Array(24).fill(0);
+    rows.forEach(v => counts[new Date(v.t).getHours()]++);
+    if (!rows.length) { wrap.innerHTML = '<div class="empty">데이터 없음</div>'; wrap.appendChild(tip); return; }
+
+    const W = Math.max(320, wrap.clientWidth || 520), H = 200;
+    const P = { t: 12, r: 8, b: 26, l: 30 };
+    const iw = W - P.l - P.r, ih = H - P.t - P.b;
+    const nice = niceMax(Math.max(2, ...counts));
+    const bw = iw / 24, gap = 2;
+
+    const bars = counts.map((n, h) => {
+      const bh = (n / nice) * ih;
+      const x = P.l + h * bw, y = P.t + ih - bh;
+      return `<rect class="hbar" data-h="${h}" data-n="${n}" x="${(x + gap / 2).toFixed(1)}" y="${y.toFixed(1)}"
+        width="${(bw - gap).toFixed(1)}" height="${Math.max(0, bh).toFixed(1)}" rx="2"
+        fill="var(--series-1)" opacity="${n ? 1 : .25}"/>`;
+    }).join('');
+    const ylab = [0, nice / 2, nice].map(v => `<line x1="${P.l}" x2="${W - P.r}" y1="${P.t + ih - v / nice * ih}" y2="${P.t + ih - v / nice * ih}" stroke="var(--grid)"/>
+      <text x="${P.l - 7}" y="${P.t + ih - v / nice * ih + 4}" text-anchor="end" font-size="10" fill="var(--paper-faint)" class="num">${Math.round(v)}</text>`).join('');
+    const xlab = [0, 6, 12, 18, 23].map(h => `<text x="${P.l + h * bw + bw / 2}" y="${H - 7}" text-anchor="middle" font-size="10" fill="var(--paper-faint)" class="num">${h}</text>`).join('');
+
+    wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="시간대별 방문">${ylab}${bars}${xlab}</svg>`;
+    wrap.appendChild(tip);
+    wrap.querySelectorAll('.hbar').forEach(r => {
+      r.addEventListener('mouseenter', () => {
+        const h = +r.dataset.h;
+        tip.innerHTML = `<span class="th">${String(h).padStart(2, '0')}:00 – ${String(h).padStart(2, '0')}:59</span>
+          <span class="r" style="--c:var(--series-1)">방문<b class="num">${r.dataset.n}</b></span>`;
+        tip.style.left = ((P.l + h * bw + bw / 2) / W * 100) + '%';
+        tip.style.top = (r.getBBox().y / H * wrap.querySelector('svg').getBoundingClientRect().height) + 'px';
+        tip.classList.add('on');
+      });
+      r.addEventListener('mouseleave', () => tip.classList.remove('on'));
+    });
+  }
+
+  /* ── plain-language summary ────────────────────────────────────────── */
+  function summary(rows) {
+    const el = $('#summary');
+    if (!rows.length) {
+      el.innerHTML = '<li><span>아직 분석할 방문 기록이 없습니다. 랜딩 페이지를 한 번 열면 첫 기록이 쌓입니다.</span></li>';
+      return;
+    }
+    const lines = [];
+    const uniq = new Set(rows.map(v => v.vid)).size;
+    const span = dayspan(rows);
+    lines.push(`최근 ${RANGE ? RANGE + '일' : span + '일'} 동안 <b>${fmt(rows.length)}건</b>의 방문이 있었고, 순 방문자는 <b>${fmt(uniq)}명</b>입니다. 하루 평균 <b>${(rows.length / span).toFixed(1)}건</b>입니다.`);
+
+    const src = tally(rows, 'src');
+    if (src.length) {
+      const [k, n] = src[0];
+      const name = LABEL[k] || k;
+      lines.push(`가장 많은 유입 경로는 <b>${name}</b>${josa(name, '으로', '로')} 전체의 <b>${Math.round(n / rows.length * 100)}%</b>(${fmt(n)}건)를 차지합니다.`);
+    }
+    const qr = rows.filter(v => v.src === 'qr').length;
+    lines.push(qr
+      ? `명함 QR을 통한 방문은 <b>${fmt(qr)}건</b>(${Math.round(qr / rows.length * 100)}%)입니다.`
+      : `아직 QR을 통한 방문은 없습니다. 명함의 QR이 <code>?src=qr</code> 주소를 가리키는지 확인해 보세요.`);
+
+    const dev = tally(rows, 'd');
+    if (dev.length) {
+      const [k, n] = dev[0];
+      lines.push(`방문자의 <b>${Math.round(n / rows.length * 100)}%</b>가 <b>${DEV[k] || k}</b>에서 접속했습니다.`);
+    }
+
+    const counts = new Array(24).fill(0);
+    rows.forEach(v => counts[new Date(v.t).getHours()]++);
+    const peak = counts.indexOf(Math.max(...counts));
+    lines.push(`방문이 가장 몰리는 시간대는 <b>${peak}시–${peak + 1}시</b>입니다.`);
+
+    const ret = rows.filter(v => v.nv === 'ret').length;
+    lines.push(`재방문 비중은 <b>${Math.round(ret / rows.length * 100)}%</b>입니다.`);
+
+    // week over week, only when both windows have data
+    const now = Date.now();
+    const w1 = RAW.filter(v => v.t >= now - 7 * 864e5 && v.src !== 'internal').length;
+    const w2 = RAW.filter(v => v.t >= now - 14 * 864e5 && v.t < now - 7 * 864e5 && v.src !== 'internal').length;
+    if (w2) {
+      const p = Math.round((w1 - w2) / w2 * 100);
+      lines.push(`최근 7일 방문은 그 직전 7일보다 <b>${p >= 0 ? '+' : ''}${p}%</b> ${p >= 0 ? '늘었습니다' : '줄었습니다'}.`);
+    }
+    el.innerHTML = lines.map(l => `<li><span>${l}</span></li>`).join('');
+  }
+
+  /* ── log table ─────────────────────────────────────────────────────── */
+  function logTable(rows) {
+    const recent = rows.slice().sort((a, b) => b.t - a.t).slice(0, 300);
+    $('#logCount').textContent = `${fmt(rows.length)}건 중 최근 ${fmt(recent.length)}건`;
+    $('#logBody').innerHTML = recent.map(v => {
+      const d = new Date(v.t);
+      const ts = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      return `<tr>
+        <td class="num">${esc(ts)}</td>
+        <td>${esc(v.p || '')}</td>
+        <td><span class="pill ${v.src === 'qr' ? 'qr' : ''}">${esc(LABEL[v.src] || v.src || '—')}</span></td>
+        <td>${esc(DEV[v.d] || v.d || '—')}</td>
+        <td>${esc(v.b || '—')}</td>
+        <td>${esc(v.os || '—')}</td>
+        <td>${v.nv === 'ret' ? '재방문' : '신규'}</td>
+        <td>${esc(v.ref || '—')}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="8" style="text-align:center;padding:2.4rem;color:var(--paper-faint)">기록 없음</td></tr>';
+  }
+
+  /* ── controls ──────────────────────────────────────────────────────── */
+  $$('[data-range]').forEach(b => b.addEventListener('click', () => { RANGE = +b.dataset.range; render(); }));
+
+  $('#sampleBtn').addEventListener('click', () => { SAMPLE = !SAMPLE; load(); });
+
+  $('#csvBtn').addEventListener('click', () => {
+    const rows = inRange(RAW).filter(v => v.src !== 'internal');
+    const cols = ['t', 'datetime', 'p', 'src', 'ref', 'd', 'b', 'os', 'lang', 'sw', 'vid', 'nv'];
+    const body = rows.map(v => cols.map(c => {
+      const val = c === 'datetime' ? new Date(v.t).toISOString() : (v[c] == null ? '' : v[c]);
+      return /[",\n]/.test(String(val)) ? `"${String(val).replace(/"/g, '""')}"` : String(val);
+    }).join(',')).join('\n');
+    const blob = new Blob(['﻿' + cols.join(',') + '\n' + body], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement('a'), { href: url, download: `parkjioh-visits-${dayKey(Date.now())}.csv` });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+
+  $('#wipeBtn').addEventListener('click', () => {
+    if (SAMPLE) { alert('샘플 보기 중에는 초기화할 수 없습니다.'); return; }
+    if (!confirm('이 브라우저에 저장된 방문 기록을 모두 지웁니다. 되돌릴 수 없습니다. 계속할까요?')) return;
+    PJA.clearLocal();
+    load();
+  });
+
+  let rt;
+  addEventListener('resize', () => {
+    clearTimeout(rt);
+    rt = setTimeout(() => { if ($('#app').classList.contains('on')) render(); }, 180);
+  });
+})();
+</script>
+</body>
+</html>
