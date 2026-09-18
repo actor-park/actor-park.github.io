@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>방문 분석 — 배우 박지오</title>
 <meta name="robots" content="noindex, nofollow">
@@ -172,6 +173,42 @@ tbody tr:hover td{background:rgba(237,233,226,.028);color:var(--paper)}
 
 @media(prefers-reduced-motion:reduce){*{transition-duration:.001ms!important;animation-duration:.001ms!important}}
 @media print{.top,.top-actions,.btn{display:none!important}body{background:#fff;color:#111}}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   v2 — 가독성 · 모바일 · 접근성 보정 (뒤에서 덮어씁니다)
+   ══════════════════════════════════════════════════════════════════════════ */
+:root{
+  /* 이전 #6d6960 은 --surface 대비 3.6:1 로 WCAG AA 미달이었다 → 5.6:1 */
+  --paper-faint:#8f8a80;
+}
+body{word-break:keep-all;overflow-wrap:break-word;-webkit-text-size-adjust:100%;
+  padding-bottom:env(safe-area-inset-bottom)}
+
+/* 잔글씨 상향 — 한글 라벨이 10px 아래로 내려가지 않게 */
+.field label{font-size:.74rem;letter-spacing:.16em}
+.top .brand span{font-size:.72rem}
+.eyebrow{font-size:.74rem}
+.kpi .k{font-size:.72rem;letter-spacing:.2em}
+.tip .th{font-size:.74rem}
+thead th{font-size:.72rem;letter-spacing:.1em}
+.pill{font-size:.74rem}
+.gate-note{font-size:.8rem;line-height:1.85}
+
+/* 탭 영역 44px */
+.btn,.gate-btn{min-height:44px}
+
+/* 로그인 유지 체크박스 */
+.gate-keep{display:flex;align-items:center;gap:.6rem;margin-top:1.1rem;
+  font-size:.82rem;color:var(--paper-dim);cursor:pointer;min-height:44px}
+.gate-keep input{width:16px;height:16px;accent-color:var(--gold);cursor:pointer}
+
+/* 키보드 포커스 */
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:2px}
+
+@media (max-width:620px){
+  :root{--gut:max(16px,env(safe-area-inset-left),env(safe-area-inset-right))}
+  .tblwrap{-webkit-overflow-scrolling:touch}
+}
 </style>
 </head>
 <body>
@@ -192,12 +229,19 @@ tbody tr:hover td{background:rgba(237,233,226,.028);color:var(--paper)}
       <input id="upw" name="password" type="password" autocomplete="current-password" required>
     </div>
 
+    <label class="gate-keep">
+      <input type="checkbox" id="remember">
+      <span>이 기기에서 로그인 유지</span>
+    </label>
+
     <button class="gate-btn" type="submit">로그인</button>
     <div class="gate-err" id="loginErr" role="alert"></div>
 
     <p class="gate-note">
-      이 페이지는 정적 사이트에서 동작하므로 로그인은 <b>가벼운 가림막</b>일 뿐,
-      서버 인증이 아닙니다. 방문 통계 외에 민감한 정보는 두지 마세요.
+      비밀번호는 <b>수집 서버가 확인</b>합니다. 이 페이지 소스에는 비밀번호도, 그 해시도
+      들어 있지 않아 소스를 열어봐도 얻을 게 없습니다.
+      비밀번호를 바꾸려면 <code>assets/collector.gs</code> 의 <code>READ_KEY</code> 를
+      고친 뒤 다시 배포하세요.
     </p>
   </form>
 </div>
@@ -323,35 +367,66 @@ tbody tr:hover td{background:rgba(237,233,226,.028);color:var(--paper)}
     .replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   /* ── auth ──────────────────────────────────────────────────────────────
-     sha256("<id>:<pw>"). A static page cannot verify a secret, so this only
-     keeps the dashboard out of casual view — anyone can read the page source. */
-  const AUTH_HASH = '80eb602c4808a814712b1d3f4a2517bf9dfef1439f5f826fc7a5ad4a72d1de3a';
-  const SESSION_KEY = 'pj_admin_ok_v1';
+     이 파일에는 비밀번호도, 그 해시도 없다. 오프라인으로 대입해 볼 대상이
+     아예 없다는 뜻이다. 비밀번호는 수집기의 READ_KEY 그 자체이고, 로그인은
+     Apps Script 에 그 키가 맞는지 물어본다. 키가 틀리면 데이터가 오지 않는다.
+     비밀번호 변경 = assets/collector.gs 의 READ_KEY 수정 후 재배포. */
+  const ADMIN_ID  = 'PJOHJ';
+  const KEY_STORE = 'pj_admin_key_v2';
+  let KEY = '';
 
-  async function sha256(str) {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+  function rememberedKey() {
+    try { return sessionStorage.getItem(KEY_STORE) || localStorage.getItem(KEY_STORE) || ''; }
+    catch (_) { return ''; }
+  }
+
+  /** 이 키로 로그를 열 수 있는지 수집기에 물어본다. */
+  async function verifyKey(key) {
+    const ep = (window.PJA_CONFIG || {}).endpoint;
+    if (!ep) return true;                       // 수집기가 아직 없으면 로컬 전용 모드
+    if (!key) return false;
+    const url = ep + (ep.indexOf('?') > -1 ? '&' : '?') +
+                'action=ping&key=' + encodeURIComponent(key);
+    const j = await (await fetch(url, { method: 'GET' })).json();
+    return !!(j && j.ok);
   }
 
   $('#loginForm').addEventListener('submit', async e => {
     e.preventDefault();
     const err = $('#loginErr');
-    if (!crypto || !crypto.subtle) {
-      err.textContent = 'https:// 또는 localhost 에서 열어야 로그인할 수 있습니다.';
+    const btn = $('.gate-btn');
+    err.textContent = '';
+
+    if ($('#uid').value.trim().toUpperCase() !== ADMIN_ID) {
+      err.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
       return;
     }
+
+    const key = $('#upw').value.trim();
+    btn.disabled = true;
+    btn.textContent = '확인 중…';
     try {
-      const h = await sha256($('#uid').value.trim() + ':' + $('#upw').value);
-      if (h !== AUTH_HASH) { err.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.'; return; }
-      try { sessionStorage.setItem(SESSION_KEY, '1'); } catch (_) {}
+      if (!(await verifyKey(key))) {
+        err.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
+        return;
+      }
+      KEY = key;
+      try {
+        const store = $('#remember') && $('#remember').checked ? localStorage : sessionStorage;
+        store.setItem(KEY_STORE, key);
+      } catch (_) {}
       enter();
     } catch (_) {
-      err.textContent = '로그인 처리 중 문제가 발생했습니다.';
+      err.textContent = '수집 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '로그인';
     }
   });
 
   $('#outBtn').addEventListener('click', () => {
-    try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
+    KEY = '';
+    try { sessionStorage.removeItem(KEY_STORE); localStorage.removeItem(KEY_STORE); } catch (_) {}
     location.reload();
   });
 
@@ -360,10 +435,16 @@ tbody tr:hover td{background:rgba(237,233,226,.028);color:var(--paper)}
     $('#app').classList.add('on');
     load();
   }
-  try { if (sessionStorage.getItem(SESSION_KEY) === '1') enter(); } catch (_) {}
+
+  (async () => {
+    const k = rememberedKey();
+    if (!k) return;
+    try { if (await verifyKey(k)) { KEY = k; enter(); } } catch (_) {}
+  })();
 
   /* ── state ─────────────────────────────────────────────────────────── */
-  let RAW = [];        // every visit we know about
+  let RAW = [];
+  let LOADERR = '';        // every visit we know about
   let SAMPLE = false;  // showing generated demo data instead
   let RANGE = 30;      // days; 0 = all
 
@@ -430,7 +511,16 @@ tbody tr:hover td{background:rgba(237,233,226,.028);color:var(--paper)}
 
   /* ── load ──────────────────────────────────────────────────────────── */
   async function load() {
-    RAW = SAMPLE ? sampleVisits() : await PJA.all();
+    if (SAMPLE) { RAW = sampleVisits(); LOADERR = ''; render(); return; }
+    try {
+      RAW = await PJA.all(KEY);
+      LOADERR = '';
+    } catch (e) {
+      RAW = PJA.readLocal();
+      LOADERR = (e && e.message === 'unauthorized')
+        ? '조회 권한이 없습니다. 로그아웃 후 다시 로그인해 주세요.'
+        : '수집 서버에서 기록을 받지 못했습니다.';
+    }
     render();
   }
 
@@ -447,7 +537,9 @@ tbody tr:hover td{background:rgba(237,233,226,.028);color:var(--paper)}
 
     $('#modeBanner').innerHTML = SAMPLE
       ? '<b>샘플 데이터</b>를 보고 있습니다. 실제 기록이 아니며 저장되지 않습니다. 「샘플」을 다시 눌러 끄세요.'
-      : mode === 'remote'
+      : LOADERR
+        ? '<b>' + esc(LOADERR) + '</b>'
+        : mode === 'remote'
         ? '<b>수집 서버 연결됨</b> — 모든 방문자의 기록이 합산됩니다.'
         : '<b>이 브라우저에만 저장 중</b> — 정적 페이지라 기본값은 기기별 기록입니다. 모든 방문자를 합산하려면 <code>assets/collector.gs</code> 안내대로 수집 주소를 연결하세요.';
     $('#footMode').textContent = SAMPLE ? '샘플 보기' : (mode === 'remote' ? '원격 수집' : '로컬 저장');
