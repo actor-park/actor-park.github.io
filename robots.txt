@@ -1,0 +1,8 @@
+# https://actor-park.github.io/
+# 배우 박지오 프로필 사이트
+
+User-agent: *
+Allow: /
+Disallow: /admin.html
+
+Sitemap: https://actor-park.github.io/sitemap.xml
