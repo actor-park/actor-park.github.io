@@ -595,6 +595,19 @@ body{
 :focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:2px}
 .gal-item:focus-visible{outline-offset:-3px}
 
+/* ── v2.1 ─ 375px 실측 후 남은 10px 대 라벨 보정 ─────────────────────────
+   렌더된 폰트 크기를 직접 재서 12px 아래로 내려간 것만 골라 올렸다. */
+.nav-cta{font-size:.76rem}
+.hero-meta .stat .k{font-size:.76rem}
+.hero-meta .stat .v small{font-size:.76rem}
+.portrait .cap{font-size:.78rem;line-height:1.7}
+.spec dt{font-size:.78rem}
+.tab .ct{font-size:.8rem}
+.bc-tiny{font-size:.74rem;line-height:1.7}
+.bc-row .val{font-size:.76rem}
+.qr-box .t .k{font-size:.74rem}
+.qr-live .qt .qurl{font-size:.76rem}
+
 /* <picture> 가 레이아웃에 끼어들지 않게 — 기존 CSS 는 img 만 보고 짜여 있다 */
 picture{display:contents}
 
