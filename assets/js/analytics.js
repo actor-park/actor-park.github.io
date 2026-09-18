@@ -148,20 +148,27 @@
     } catch (e) { /* ignore */ }
   }
 
-  /** All visits, newest last. Resolves from the collector when one is set. */
-  function all() {
-    if (!CONFIG.endpoint) return Promise.resolve(readLocal());
+  /**
+   * All visits, newest last.
+   *
+   * Reading the collector needs the private admin key (READ_KEY in
+   * collector.gs). The public write token in this file will NOT open it, so
+   * pass the key the admin typed at login. With no key — or no collector —
+   * this resolves to whatever this browser recorded locally.
+   */
+  function all(readKey) {
+    if (!CONFIG.endpoint || !readKey) return Promise.resolve(readLocal());
     var url = CONFIG.endpoint +
       (CONFIG.endpoint.indexOf('?') > -1 ? '&' : '?') +
-      'action=list&token=' + encodeURIComponent(CONFIG.token || '');
+      'action=list&key=' + encodeURIComponent(readKey);
     return fetch(url, { method: 'GET' })
       .then(function (r) { return r.json(); })
       .then(function (j) {
+        if (j && j.ok === false) throw new Error(j.error || 'unauthorized');
         var rows = Array.isArray(j) ? j : (j && j.visits) || [];
         return rows.map(function (r) { r.t = Number(r.t); return r; })
                    .sort(function (a, b) { return a.t - b.t; });
-      })
-      .catch(function () { return readLocal(); });
+      });
   }
 
   function clearLocal() { try { root.localStorage.removeItem(KEY_VISITS); } catch (e) {} }
