@@ -158,10 +158,13 @@
    */
   function all(readKey) {
     if (!CONFIG.endpoint || !readKey) return Promise.resolve(readLocal());
-    var url = CONFIG.endpoint +
-      (CONFIG.endpoint.indexOf('?') > -1 ? '&' : '?') +
-      'action=list&key=' + encodeURIComponent(readKey);
-    return fetch(url, { method: 'GET' })
+    // POST, not GET: a key in a query string ends up in browser history and
+    // in whatever access log sits in front of the collector.
+    return fetch(CONFIG.endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'list', key: readKey })
+    })
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (j && j.ok === false) throw new Error(j.error || 'unauthorized');
