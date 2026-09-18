@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' blob:; base-uri 'none'; object-src 'none'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src 'self' https://script.google.com https://script.googleusercontent.com; form-action 'self'; frame-src 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>배우 박지오 — Ji-oh Park | Actor Profile</title>
 <meta name="description" content="배우 박지오(Ji-oh Park) 공식 프로필. 영화 「와일드씽」, 디즈니+ 「블러디 플라워」, 넷플릭스 「중증외상센터」 등 26편의 필모그래피와 스틸, 명함, 프로필 PDF.">
@@ -11,10 +12,23 @@
 <meta property="og:type" content="profile">
 <meta property="og:title" content="배우 박지오 — Ji-oh Park">
 <meta property="og:description" content="영화 · 드라마 · 독립영화 26편. 배우 박지오 공식 프로필.">
-<meta property="og:image" content="https://actor-park.github.io/assets/portrait-mono.jpg">
+<meta property="og:image" content="https://actor-park.github.io/assets/og-card.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="배우 박지오 — Ji-oh Park 프로필">
+<meta property="og:site_name" content="배우 박지오">
 <meta property="og:url" content="https://actor-park.github.io/">
 <meta property="og:locale" content="ko_KR">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="배우 박지오 — Ji-oh Park">
+<meta name="twitter:description" content="영화 · 드라마 · 독립영화 26편. 배우 박지오 공식 프로필.">
+<meta name="twitter:image" content="https://actor-park.github.io/assets/og-card.jpg">
+
+<link rel="canonical" href="https://actor-park.github.io/">
+<link rel="manifest" href="site.webmanifest">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<meta name="apple-mobile-web-app-title" content="박지오">
+<meta name="format-detection" content="telephone=no">
 
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%2308080a'/><text y='72' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23c9ae82'>J</text></svg>">
 
@@ -514,6 +528,76 @@ section{position:relative;padding-block:clamp(84px,11vw,160px)}
   html{scroll-behavior:auto}
   .rv{opacity:1;transform:none}
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   v2 — 가독성 · 모바일 · 접근성 보정
+   기존 규칙을 지우지 않고 뒤에서 덮어씁니다. 되돌리려면 이 블록만 지우세요.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root{
+  /* 이전 #6d6960 은 배경 대비 3.68:1 로 WCAG AA(4.5:1) 미달이었다.
+     아래 값은 --ink 기준 5.8:1, --ink-2 기준 5.6:1. 위계는 그대로 유지:
+     paper #ede9e2 > paper-dim #a9a49b(8.1:1) > paper-faint(5.8:1) */
+  --paper-faint:#8f8a80;
+}
+
+/* 한글은 단어 중간에서 끊기면 읽기 힘들다. 긴 URL 만 예외로 쪼갠다. */
+body{
+  word-break:keep-all;
+  overflow-wrap:break-word;
+  -webkit-text-size-adjust:100%;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+
+/* ── 잔글씨 상향 ──────────────────────────────────────────────────────────
+   390px 실측에서 8.96~9.6px 로 렌더되던 것들. 한글은 같은 px 라도 라틴보다
+   작아 보여서 최소 11.5px(.72rem) 선으로 올린다. */
+.brand .en{font-size:.72rem}
+.nav-links a{font-size:.8rem;letter-spacing:.16em;padding-block:12px}
+.fr-year .soon{font-size:.72rem;letter-spacing:.14em}
+.fr-net{font-size:.78rem;letter-spacing:.13em}
+.fr-title .note{font-size:.78rem}
+.fr-role{font-size:.92rem}
+.gal-cap .r{font-size:.76rem;letter-spacing:.15em}
+.act .k{font-size:.72rem;letter-spacing:.22em}
+.act .v{font-size:.98rem}
+.act .go{font-size:.72rem;letter-spacing:.18em}
+.bc-en{font-size:clamp(.72rem,1.4vw,.82rem);letter-spacing:.34em}
+.bc-row .lbl{font-size:.7rem;letter-spacing:.2em;min-width:58px}
+.bc-flip-hint{font-size:.7rem;letter-spacing:.22em}
+.qr-live .qt .k{font-size:.72rem;letter-spacing:.22em}
+.qr-live .qt .s{font-size:.84rem;line-height:1.8}
+.foot-bot{font-size:.78rem;letter-spacing:.1em}
+.btn{font-size:.82rem;letter-spacing:.12em}
+
+/* ── 터치 기기 ────────────────────────────────────────────────────────────
+   hover 가 없는 기기에서는 스틸 캡션이 영영 안 보였다. 항상 펼쳐 둔다. */
+@media (hover:none){
+  .gal-cap{transform:none;opacity:1}
+  .gal-item::after{opacity:1}
+  .film-row:hover{padding-inline:0;background:none;box-shadow:none}
+  .act:hover{transform:none}
+}
+
+/* ── 탭 영역 44px 확보 (Apple HIG) ───────────────────────────────────── */
+.btn,.tab,.nav-cta{min-height:44px}
+.btn{padding-block:.85rem}
+.brand{padding-block:8px}
+.foot-bot a,.foot-links a{display:inline-flex;align-items:center;min-height:44px}
+
+/* ── 노치·홈바 ──────────────────────────────────────────────────────────── */
+@media (max-width:620px){
+  :root{--gut:max(20px,env(safe-area-inset-left),env(safe-area-inset-right))}
+}
+
+/* ── 키보드 포커스 ───────────────────────────────────────────────────────
+   이전에는 focus-visible 스타일이 한 곳뿐이라 탭으로 어디 있는지 알 수 없었다. */
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:2px}
+.gal-item:focus-visible{outline-offset:-3px}
+
+/* ── 이미지 로딩 중 레이아웃 흔들림(CLS) 방지 보조 ──────────────────────── */
+.gal-item img,.portrait img{background:var(--ink-3)}
+
 </style>
 </head>
 <body>
@@ -537,7 +621,7 @@ section{position:relative;padding-block:clamp(84px,11vw,160px)}
 <!-- ══════════════ HERO ══════════════ -->
 <header class="hero" id="top">
   <div class="hero-bg">
-    <img src="assets/portrait-dark.jpg" alt="배우 박지오 프로필 사진" fetchpriority="high">
+    <img src="assets/portrait-dark.jpg" alt="배우 박지오 프로필 사진" width="900" height="1349" fetchpriority="high" decoding="async">
   </div>
   <div class="wrap hero-inner">
     <p class="hero-tag">Actor · 배우</p>
@@ -564,7 +648,7 @@ section{position:relative;padding-block:clamp(84px,11vw,160px)}
   <div class="wrap">
     <div class="profile-grid">
       <figure class="portrait rv">
-        <img src="assets/portrait-warm.jpg" alt="배우 박지오 프로필 컷" loading="lazy">
+        <img src="assets/portrait-warm.jpg" alt="배우 박지오 프로필 컷" width="900" height="1349" loading="lazy" decoding="async">
         <figcaption class="cap">Profile · 2026</figcaption>
       </figure>
       <div>
@@ -680,7 +764,7 @@ section{position:relative;padding-block:clamp(84px,11vw,160px)}
             <span class="tx"><span class="k">Instagram</span><span class="v">@z5park</span></span>
             <span class="go">Open</span>
           </a>
-          <a class="act" href="http://m.site.naver.com/0VQWF" target="_blank" rel="noopener noreferrer">
+          <a class="act" href="https://m.site.naver.com/0VQWF" target="_blank" rel="noopener noreferrer">
             <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5a15 15 0 0 1 0 19a15 15 0 0 1 0-19z"/></svg>
             <span class="tx"><span class="k">Naver</span><span class="v">네이버 인물정보</span></span>
             <span class="go">Open</span>
@@ -722,7 +806,7 @@ section{position:relative;padding-block:clamp(84px,11vw,160px)}
         </div>
 
         <div class="qr-box">
-          <img src="assets/qr-naver.png" alt="네이버 인물정보 QR 코드" loading="lazy">
+          <img src="assets/qr-naver.png" alt="네이버 인물정보 QR 코드" width="440" height="440" loading="lazy" decoding="async">
           <div class="t">
             <div class="k">Scan</div>
             <div class="v">네이버 인물정보</div>
@@ -782,7 +866,7 @@ section{position:relative;padding-block:clamp(84px,11vw,160px)}
   "height":"175 cm",
   "alumniOf":{"@type":"CollegeOrUniversity","name":"동국대학교 연극학부"},
   "knowsLanguage":["ko","en"],
-  "sameAs":["https://instagram.com/z5park","http://m.site.naver.com/0VQWF"]
+  "sameAs":["https://instagram.com/z5park","https://m.site.naver.com/0VQWF"]
 }
 </script>
 
@@ -874,7 +958,7 @@ section{position:relative;padding-block:clamp(84px,11vw,160px)}
   /* ───────── gallery ───────── */
   $('#gal').innerHTML = STILLS.map((s, i) => `
     <figure class="gal-item" data-i="${i}" role="button" tabindex="0" aria-label="${esc(s.w)} 크게 보기">
-      <img src="assets/still-${s.f}.jpg" alt="${esc(s.w)} ${esc(s.r)} 역 스틸" loading="lazy" decoding="async">
+      <img src="assets/still-${s.f}.jpg" alt="${esc(s.w)} ${esc(s.r)} 역 스틸" width="1280" height="720" loading="lazy" decoding="async">
       <figcaption class="gal-cap"><div class="w">${esc(s.w)}</div><div class="r">${esc(s.r)}</div></figcaption>
     </figure>`).join('');
 
@@ -972,7 +1056,7 @@ section{position:relative;padding-block:clamp(84px,11vw,160px)}
       'TEL;TYPE=CELL:+82-10-8223-0716',
       'EMAIL;TYPE=INTERNET:a0803p@naver.com',
       'URL:https://instagram.com/z5park',
-      'URL:http://m.site.naver.com/0VQWF',
+      'URL:https://m.site.naver.com/0VQWF',
       'NOTE:동국대학교 연극학부 졸업 · 175cm/65kg · 특기: 영어, 합기도, 수영, 농구, 요리',
       'END:VCARD'
     ].join('\r\n');
