@@ -257,7 +257,7 @@ thead th{font-size:.72rem;letter-spacing:.1em}
       <button class="btn" data-range="0">전체</button>
       <button class="btn" id="csvBtn">CSV</button>
       <button class="btn" id="sampleBtn" aria-pressed="false">샘플</button>
-      <button class="btn btn-danger" id="wipeBtn">초기화</button>
+      <button class="btn btn-danger" id="wipeBtn">이 기기 기록 지우기</button>
       <button class="btn" id="outBtn">로그아웃</button>
     </div>
   </header>
@@ -385,9 +385,13 @@ thead th{font-size:.72rem;letter-spacing:.1em}
     const ep = (window.PJA_CONFIG || {}).endpoint;
     if (!ep) return true;                       // 수집기가 아직 없으면 로컬 전용 모드
     if (!key) return false;
-    const url = ep + (ep.indexOf('?') > -1 ? '&' : '?') +
-                'action=ping&key=' + encodeURIComponent(key);
-    const j = await (await fetch(url, { method: 'GET' })).json();
+    // POST, not GET: a key in the query string ends up in browser history
+    // and in whatever access log sits in front of the script.
+    const j = await (await fetch(ep, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'ping', key })
+    })).json();
     return !!(j && j.ok);
   }
 
@@ -752,8 +756,8 @@ thead th{font-size:.72rem;letter-spacing:.1em}
     const src = tally(rows, 'src');
     if (src.length) {
       const [k, n] = src[0];
-      const name = LABEL[k] || k;
-      lines.push(`가장 많은 유입 경로는 <b>${name}</b>${josa(name, '으로', '로')} 전체의 <b>${Math.round(n / rows.length * 100)}%</b>(${fmt(n)}건)를 차지합니다.`);
+      const name = LABEL[k] || k || '기타';
+      lines.push(`가장 많은 유입 경로는 <b>${esc(name)}</b>${josa(name, '으로', '로')} 전체의 <b>${Math.round(n / rows.length * 100)}%</b>(${fmt(n)}건)를 차지합니다.`);
     }
     const qr = rows.filter(v => v.src === 'qr').length;
     lines.push(qr
@@ -763,7 +767,7 @@ thead th{font-size:.72rem;letter-spacing:.1em}
     const dev = tally(rows, 'd');
     if (dev.length) {
       const [k, n] = dev[0];
-      lines.push(`방문자의 <b>${Math.round(n / rows.length * 100)}%</b>가 <b>${DEV[k] || k}</b>에서 접속했습니다.`);
+      lines.push(`방문자의 <b>${Math.round(n / rows.length * 100)}%</b>가 <b>${esc(DEV[k] || k || '기타')}</b>에서 접속했습니다.`);
     }
 
     const counts = new Array(24).fill(0);
