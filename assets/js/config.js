@@ -8,6 +8,6 @@
  * token:    must match SHARED_TOKEN inside collector.gs.
  */
 window.PJA_CONFIG = {
-  endpoint: '',
-  token: ''
+  endpoint: 'https://script.google.com/macros/s/AKfycbwaHNty6qgIq7HoRmkER_VTOOrfvMUxCMuImuFnPZPkpvgSLXo4z2dkd729u3By9Qt-4Q/exec',
+  token: 'pja_T9lwsFX1SRGDBeL7s6ODCeXjVvmchrX7VruUO6Fe'
 };
