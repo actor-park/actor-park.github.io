@@ -595,6 +595,9 @@ body{
 :focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:2px}
 .gal-item:focus-visible{outline-offset:-3px}
 
+/* <picture> 가 레이아웃에 끼어들지 않게 — 기존 CSS 는 img 만 보고 짜여 있다 */
+picture{display:contents}
+
 /* ── 이미지 로딩 중 레이아웃 흔들림(CLS) 방지 보조 ──────────────────────── */
 .gal-item img,.portrait img{background:var(--ink-3)}
 
@@ -621,7 +624,10 @@ body{
 <!-- ══════════════ HERO ══════════════ -->
 <header class="hero" id="top">
   <div class="hero-bg">
-    <img src="assets/portrait-dark.jpg" alt="배우 박지오 프로필 사진" width="900" height="1349" fetchpriority="high" decoding="async">
+    <picture>
+      <source type="image/webp" srcset="assets/portrait-dark-540.webp 540w, assets/portrait-dark-900.webp 900w" sizes="(max-width:1023px) 100vw, 64vw">
+      <img src="assets/portrait-dark.jpg" alt="배우 박지오 프로필 사진" width="900" height="1349" fetchpriority="high" decoding="async">
+    </picture>
   </div>
   <div class="wrap hero-inner">
     <p class="hero-tag">Actor · 배우</p>
@@ -648,7 +654,10 @@ body{
   <div class="wrap">
     <div class="profile-grid">
       <figure class="portrait rv">
+        <picture>
+        <source type="image/webp" srcset="assets/portrait-warm-540.webp 540w, assets/portrait-warm-900.webp 900w" sizes="(max-width:900px) 420px, 40vw">
         <img src="assets/portrait-warm.jpg" alt="배우 박지오 프로필 컷" width="900" height="1349" loading="lazy" decoding="async">
+      </picture>
         <figcaption class="cap">Profile · 2026</figcaption>
       </figure>
       <div>
@@ -958,7 +967,10 @@ body{
   /* ───────── gallery ───────── */
   $('#gal').innerHTML = STILLS.map((s, i) => `
     <figure class="gal-item" data-i="${i}" role="button" tabindex="0" aria-label="${esc(s.w)} 크게 보기">
-      <img src="assets/still-${s.f}.jpg" alt="${esc(s.w)} ${esc(s.r)} 역 스틸" width="1280" height="720" loading="lazy" decoding="async">
+      <picture>
+        <source type="image/webp" srcset="assets/still-${s.f}-640.webp 640w, assets/still-${s.f}-1280.webp 1280w" sizes="(max-width:560px) 100vw, (max-width:820px) 50vw, 33vw">
+        <img src="assets/still-${s.f}.jpg" alt="${esc(s.w)} ${esc(s.r)} 역 스틸" width="1280" height="720" loading="lazy" decoding="async">
+      </picture>
       <figcaption class="gal-cap"><div class="w">${esc(s.w)}</div><div class="r">${esc(s.r)}</div></figcaption>
     </figure>`).join('');
 
@@ -969,7 +981,8 @@ body{
   function show(i) {
     cur = (i + STILLS.length) % STILLS.length;
     const s = STILLS[cur];
-    lbImg.src = `assets/still-${s.f}.jpg`;
+    lbImg.onerror = () => { lbImg.onerror = null; lbImg.src = `assets/still-${s.f}.jpg`; };
+    lbImg.src = `assets/still-${s.f}-1280.webp`;
     lbImg.alt = `${s.w} ${s.r} 역 스틸`;
     $('#lbW').textContent = s.w;
     $('#lbR').textContent = s.r;
