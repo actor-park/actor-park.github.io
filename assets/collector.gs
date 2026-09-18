@@ -13,6 +13,15 @@
  *                 so the visit log cannot be opened from the page source alone.
  *                 This is what makes the admin login mean something.
  *
+ * Reads go over POST so the key never lands in a URL — a query string ends up
+ * in browser history and in server access logs. GET still answers for a quick
+ * manual check, but it puts the key in the URL; prefer POST.
+ *
+ * Everything written here is later rendered as HTML by admin.html, so the
+ * values are constrained on the way IN as well: known fields only, enumerated
+ * values where the client only ever sends a fixed set, angle brackets stripped,
+ * length capped. The admin page escapes too — one layer is never enough.
+ *
  * Change the admin password  = change READ_KEY below, then redeploy.
  * Redeploy without changing the /exec address:
  *   배포 → 배포 관리 → (연필 아이콘) → 버전: 새 버전 → 배포
@@ -27,8 +36,19 @@ var MAX_RETURN  = 20000;
 
 var COLUMNS   = ['t', 'p', 'src', 'ref', 'd', 'b', 'os', 'lang', 'sw', 'vid', 'nv', 'tz'];
 var NUMERIC   = { t: 1, sw: 1, tz: 1 };
-var MAX_FIELD = 300;    // characters kept per text field
-var MAX_BODY  = 4000;   // characters accepted per POST
+
+/* analytics.js only ever produces these. Anything else is dropped, which is
+   what keeps a crafted payload out of the admin page's charts and summary. */
+var ENUMS = {
+  src: ['qr', 'direct', 'internal', 'search', 'sns', 'referral'],
+  d:   ['mobile', 'tablet', 'desktop'],
+  nv:  ['new', 'ret'],
+  b:   ['Edge', 'Opera', 'Samsung', 'Whale', 'KakaoTalk', 'In-app', 'Chrome', 'Firefox', 'Safari', 'Other'],
+  os:  ['Windows', 'iOS', 'macOS', 'Android', 'Linux', 'Other']
+};
+
+var MAX_FIELD = 300;    // characters kept per free-text field
+var MAX_BODY  = 4000;   // characters accepted per request
 
 function sheet_() {
   var ss = SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
@@ -50,14 +70,51 @@ function eq_(a, b) {
   return diff === 0;
 }
 
-/** Keep only the shape we expect: known columns, bounded length, no newlines. */
+/** Keep only the shape we expect. */
 function clean_(value, col) {
   if (value === undefined || value === null) return '';
+
   if (NUMERIC[col]) {
     var n = Number(value);
     return isFinite(n) ? n : '';
   }
-  return String(value).slice(0, MAX_FIELD).replace(/[\r\n\t]+/g, ' ');
+
+  var s = String(value)
+    .slice(0, MAX_FIELD)
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/[<>]/g, '');          // nothing that can open an HTML tag downstream
+
+  if (ENUMS[col]) return ENUMS[col].indexOf(s) === -1 ? '' : s;
+  if (col === 'lang') return s.replace(/[^A-Za-z-]/g, '').slice(0, 5);
+  return s;                          // p, ref, vid — free text, already bounded
+}
+
+function list_() {
+  var sh = sheet_();
+  var last = sh.getLastRow();
+  if (last < 2) return { visits: [] };
+
+  var first = Math.max(2, last - MAX_RETURN + 1);
+  var values = sh.getRange(first, 1, last - first + 1, COLUMNS.length).getValues();
+  var visits = values.map(function (r) {
+    var o = {};
+    COLUMNS.forEach(function (c, i) { o[c] = r[i]; });
+    o.t = Number(o.t);
+    return o;
+  }).filter(function (o) { return !!o.t; });
+
+  return { visits: visits };
+}
+
+/** Anything that reads the log comes through here. */
+function read_(action, key) {
+  if (!eq_(key, READ_KEY)) {
+    Utilities.sleep(700);            // slow brute force to a crawl
+    return { ok: false, error: 'unauthorized' };
+  }
+  if (action === 'ping') return { ok: true };
+  if (action === 'list') return list_();
+  return { ok: true, hint: 'action must be list or ping' };
 }
 
 function doPost(e) {
@@ -66,6 +123,11 @@ function doPost(e) {
     if (!raw || raw.length > MAX_BODY) return json_({ ok: false, error: 'bad request' });
 
     var body = JSON.parse(raw);
+
+    // read request:  { action: 'list' | 'ping', key: '...' }
+    if (body.action) return json_(read_(String(body.action), body.key));
+
+    // write request: { token: '...', visit: { ... } }
     if (!eq_(body.token, WRITE_TOKEN)) return json_({ ok: false, error: 'unauthorized' });
 
     var v = body.visit || {};
@@ -80,29 +142,7 @@ function doPost(e) {
 
 function doGet(e) {
   var p = (e && e.parameter) || {};
-  var supplied = p.key || p.token || '';
-
-  if (!eq_(supplied, READ_KEY)) {
-    Utilities.sleep(700);                      // slow brute force to a crawl
-    return json_({ ok: false, error: 'unauthorized' });
-  }
-  if (p.action === 'ping') return json_({ ok: true });
-  if (p.action !== 'list') return json_({ ok: true, hint: 'use ?action=list&key=...' });
-
-  var sh = sheet_();
-  var last = sh.getLastRow();
-  if (last < 2) return json_({ visits: [] });
-
-  var first = Math.max(2, last - MAX_RETURN + 1);
-  var values = sh.getRange(first, 1, last - first + 1, COLUMNS.length).getValues();
-  var visits = values.map(function (r) {
-    var o = {};
-    COLUMNS.forEach(function (c, i) { o[c] = r[i]; });
-    o.t = Number(o.t);
-    return o;
-  }).filter(function (o) { return !!o.t; });
-
-  return json_({ visits: visits });
+  return json_(read_(String(p.action || ''), p.key || p.token || ''));
 }
 
 function json_(obj) {
