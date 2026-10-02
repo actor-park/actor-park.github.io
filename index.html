@@ -1096,10 +1096,10 @@ picture{display:contents}
 
   /* ───────── share ───────── */
   $('#shareBtn').addEventListener('click', async () => {
-    const data = {title:'배우 박지오 — Ji-oh Park', text:'배우 박지오 프로필', url:location.href};
+    const data = {title:'배우 박지오 — Ji-oh Park', text:'배우 박지오 프로필', url:window.PJA_PUBLIC_URL || location.href};
     try {
       if (navigator.share) { await navigator.share(data); return; }
-      await navigator.clipboard.writeText(location.href);
+      await navigator.clipboard.writeText(data.url);
       toast('링크를 <b>복사했습니다</b>');
     } catch (err) {
       if (err?.name !== 'AbortError') toast('공유를 사용할 수 없습니다');
@@ -1119,7 +1119,7 @@ picture{display:contents}
   try { PJA.track(); } catch (e) { /* logging must never break the page */ }
 
   const qrUrl = (() => {
-    const u = new URL(location.href);
+    const u = new URL(window.PJA_PUBLIC_URL || location.href);
     u.hash = '';
     u.searchParams.set('src', 'qr');
     return u.toString();
