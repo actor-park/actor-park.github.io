@@ -18,6 +18,7 @@
     current.search = remaining ? '?' + remaining : '';
   }
   var cleanUrl = current.href;
+  window.PJA_PUBLIC_URL = cleanUrl;
   function guardedUrl() {
     var target = new URL(cleanUrl);
     target.search += (target.search ? '&' : '?') + marker + '=1';
