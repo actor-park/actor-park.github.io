@@ -230,19 +230,12 @@ thead th{font-size:.72rem;letter-spacing:.1em}
       <input id="upw" name="password" type="password" autocomplete="current-password" required>
     </div>
 
-    <label class="gate-keep">
-      <input type="checkbox" id="remember">
-      <span>이 기기에서 로그인 유지</span>
-    </label>
-
     <button class="gate-btn" type="submit">로그인</button>
     <div class="gate-err" id="loginErr" role="alert"></div>
 
     <p class="gate-note">
-      비밀번호는 <b>수집 서버가 확인</b>합니다. 이 페이지 소스에는 비밀번호도, 그 해시도
-      들어 있지 않아 소스를 열어봐도 얻을 게 없습니다.
-      비밀번호를 바꾸려면 <code>assets/collector.gs</code> 의 <code>READ_KEY</code> 를
-      고친 뒤 다시 배포하세요.
+      비밀번호는 <b>수집 서버가 확인</b>하며 브라우저 저장소에 보관하지 않습니다.
+      새로고침하거나 페이지를 다시 열면 다시 로그인해 주세요.
     </p>
   </form>
 </div>
@@ -367,24 +360,23 @@ thead th{font-size:.72rem;letter-spacing:.1em}
   const esc = s => String(s == null ? '' : s)
     .replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  /* ── auth ──────────────────────────────────────────────────────────────
-     이 파일에는 비밀번호도, 그 해시도 없다. 오프라인으로 대입해 볼 대상이
-     아예 없다는 뜻이다. 비밀번호는 수집기의 READ_KEY 그 자체이고, 로그인은
-     Apps Script 에 그 키가 맞는지 물어본다. 키가 틀리면 데이터가 오지 않는다.
-     비밀번호 변경 = assets/collector.gs 의 READ_KEY 수정 후 재배포. */
+  /* Password stays in this page's memory only. Server validates every read.
+     Remove credentials saved by older versions before showing the login form. */
   const ADMIN_ID  = 'PJOHJ';
   const KEY_STORE = 'pj_admin_key_v2';
   let KEY = '';
 
-  function rememberedKey() {
-    try { return sessionStorage.getItem(KEY_STORE) || localStorage.getItem(KEY_STORE) || ''; }
-    catch (_) { return ''; }
+  function clearSavedKey() {
+    for (const name of ['sessionStorage', 'localStorage']) {
+      try { window[name].removeItem(KEY_STORE); } catch (_) {}
+    }
   }
+  clearSavedKey();
 
   /** 이 키로 로그를 열 수 있는지 수집기에 물어본다. */
   async function verifyKey(key) {
     const ep = (window.PJA_CONFIG || {}).endpoint;
-    if (!ep) return true;                       // 수집기가 아직 없으면 로컬 전용 모드
+    if (!ep) throw new Error('collector_unavailable');
     if (!key) return false;
     // POST, not GET: a key in the query string ends up in browser history
     // and in whatever access log sits in front of the script.
@@ -393,6 +385,10 @@ thead th{font-size:.72rem;letter-spacing:.1em}
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'ping', key })
     })).json();
+    if (j && j.error === 'rate_limited') {
+      const seconds = Math.max(1, Math.ceil(Number(j.retry_after) || 60));
+      throw new Error(`로그인 시도가 많습니다. ${seconds}초 후 다시 시도해 주세요.`);
+    }
     return !!(j && j.ok);
   }
 
@@ -416,13 +412,11 @@ thead th{font-size:.72rem;letter-spacing:.1em}
         return;
       }
       KEY = key;
-      try {
-        const store = $('#remember') && $('#remember').checked ? localStorage : sessionStorage;
-        store.setItem(KEY_STORE, key);
-      } catch (_) {}
+      $('#upw').value = '';
       enter();
-    } catch (_) {
-      err.textContent = '수집 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+    } catch (error) {
+      err.textContent = error && /^로그인 시도가 많습니다\./.test(error.message)
+        ? error.message : '수집 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.';
     } finally {
       btn.disabled = false;
       btn.textContent = '로그인';
@@ -431,7 +425,7 @@ thead th{font-size:.72rem;letter-spacing:.1em}
 
   $('#outBtn').addEventListener('click', () => {
     KEY = '';
-    try { sessionStorage.removeItem(KEY_STORE); localStorage.removeItem(KEY_STORE); } catch (_) {}
+    clearSavedKey();
     location.reload();
   });
 
@@ -441,11 +435,8 @@ thead th{font-size:.72rem;letter-spacing:.1em}
     load();
   }
 
-  (async () => {
-    const k = rememberedKey();
-    if (!k) return;
-    try { if (await verifyKey(k)) { KEY = k; enter(); } } catch (_) {}
-  })();
+  window.addEventListener('pagehide', () => { KEY = ''; $('#upw').value = ''; });
+  window.addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
 
   /* ── state ─────────────────────────────────────────────────────────── */
   let RAW = [];
@@ -815,12 +806,18 @@ thead th{font-size:.72rem;letter-spacing:.1em}
 
   $('#sampleBtn').addEventListener('click', () => { SAMPLE = !SAMPLE; load(); });
 
+  function csvCell(value) {
+    let text = String(value == null ? '' : value);
+    if (/^[\s\uFEFF]*[=+\-@＝＋－＠]/.test(text)) text = "'" + text;
+    return '"' + text.replace(/"/g, '""') + '"';
+  }
+
   $('#csvBtn').addEventListener('click', () => {
     const rows = inRange(RAW).filter(v => v.src !== 'internal');
     const cols = ['t', 'datetime', 'p', 'src', 'ref', 'd', 'b', 'os', 'lang', 'sw', 'vid', 'nv'];
     const body = rows.map(v => cols.map(c => {
       const val = c === 'datetime' ? new Date(v.t).toISOString() : (v[c] == null ? '' : v[c]);
-      return /[",\n]/.test(String(val)) ? `"${String(val).replace(/"/g, '""')}"` : String(val);
+      return csvCell(val);
     }).join(',')).join('\n');
     const blob = new Blob(['﻿' + cols.join(',') + '\n' + body], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
