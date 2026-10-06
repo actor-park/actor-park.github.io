@@ -5,17 +5,16 @@
  *
  *   WRITE_TOKEN — PUBLIC. It ships inside assets/js/config.js so every
  *                 visitor's browser can log its own visit. If someone digs it
- *                 out of the page source the worst they can do is push junk
- *                 rows; they still cannot read the log.
+ *                 out of the page source they can submit visits, so the
+ *                 collector must validate and neutralize every field.
  *
  *   READ_KEY    — PRIVATE. It exists only in this file. The admin page asks
  *                 for it at login and it is never committed to the repository,
  *                 so the visit log cannot be opened from the page source alone.
  *                 This is what makes the admin login mean something.
  *
- * Reads go over POST so the key never lands in a URL — a query string ends up
- * in browser history and in server access logs. GET still answers for a quick
- * manual check, but it puts the key in the URL; prefer POST.
+ * Reads use POST only; GET never accepts credentials or returns visit data.
+ * Failed authentication is limited across this single-admin service.
  *
  * Everything written here is later rendered as HTML by admin.html, so the
  * values are constrained on the way IN as well: known fields only, enumerated
@@ -49,6 +48,11 @@ var ENUMS = {
 
 var MAX_FIELD = 300;    // characters kept per free-text field
 var MAX_BODY  = 4000;   // characters accepted per request
+var SECURITY_VERSION = '20261006';
+var AUTH_STATE = 'pj_auth_failures_v1';
+var AUTH_WINDOW_MS = 5 * 60 * 1000;
+var AUTH_MAX_FAILURES = 8;
+var AUTH_BLOCK_MS = 60 * 1000;
 
 function sheet_() {
   var ss = SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
@@ -76,7 +80,10 @@ function clean_(value, col) {
 
   if (NUMERIC[col]) {
     var n = Number(value);
-    return isFinite(n) ? n : '';
+    if (!isFinite(n)) return '';
+    if (col === 'sw') return n >= 0 && n <= 16384 ? Math.round(n) : '';
+    if (col === 'tz') return n >= -14 && n <= 14 ? n : '';
+    return n;
   }
 
   var s = String(value)
@@ -86,7 +93,9 @@ function clean_(value, col) {
 
   if (ENUMS[col]) return ENUMS[col].indexOf(s) === -1 ? '' : s;
   if (col === 'lang') return s.replace(/[^A-Za-z-]/g, '').slice(0, 5);
-  return s;                          // p, ref, vid — free text, already bounded
+  // appendRow treats a leading '=' as a formula. Also protect later CSV use.
+  if (/^[\s\uFEFF]*[=+\-@＝＋－＠]/.test(s)) s = "'" + s;
+  return s;
 }
 
 function list_() {
@@ -106,13 +115,45 @@ function list_() {
   return { visits: visits };
 }
 
+/** A shared finite cooldown: Apps Script does not expose a trusted client IP.
+ * Check the limit BEFORE comparing credentials, including otherwise valid keys.
+ * Requests during a cooldown never extend it. State survives cache eviction.
+ */
+function authorize_(key) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(2000)) return { ok: false, error: 'rate_limited', retry_after: 2 };
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var raw = props.getProperty(AUTH_STATE);
+    var state = raw ? JSON.parse(raw) : {};
+    var now = Date.now();
+    if (Number(state.blockedUntil) > now) {
+      return { ok: false, error: 'rate_limited', retry_after: Math.ceil((state.blockedUntil - now) / 1000) };
+    }
+    if (state.blockedUntil || !state.started || now - state.started >= AUTH_WINDOW_MS) {
+      state = { started: now, failures: 0 };
+    }
+    if (typeof key === 'string' && key && READ_KEY !== 'REPLACE_WITH_YOUR_OWN_ADMIN_KEY' && eq_(key, READ_KEY)) {
+      props.deleteProperty(AUTH_STATE);
+      return { ok: true };
+    }
+    state.failures = (Number(state.failures) || 0) + 1;
+    if (state.failures >= AUTH_MAX_FAILURES) state.blockedUntil = now + AUTH_BLOCK_MS;
+    props.setProperty(AUTH_STATE, JSON.stringify(state));
+    return state.blockedUntil
+      ? { ok: false, error: 'rate_limited', retry_after: AUTH_BLOCK_MS / 1000 }
+      : { ok: false, error: 'unauthorized' };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 /** Anything that reads the log comes through here. */
 function read_(action, key) {
-  if (!eq_(key, READ_KEY)) {
-    Utilities.sleep(700);            // slow brute force to a crawl
-    return { ok: false, error: 'unauthorized' };
-  }
-  if (action === 'ping') return { ok: true };
+  if (action !== 'ping' && action !== 'list') return { ok: false, error: 'bad request' };
+  var auth = authorize_(key);
+  if (!auth.ok) return auth;
+  if (action === 'ping') return { ok: true, security_version: SECURITY_VERSION };
   if (action === 'list') return list_();
   return { ok: true, hint: 'action must be list or ping' };
 }
@@ -132,7 +173,7 @@ function doPost(e) {
 
     var v = body.visit || {};
     var row = COLUMNS.map(function (c) { return clean_(v[c], c); });
-    if (!row[0]) row[0] = Date.now();          // always stamp a time
+    row[0] = Date.now();                     // do not trust a supplied timestamp
     sheet_().appendRow(row);
     return json_({ ok: true });
   } catch (err) {
@@ -141,8 +182,7 @@ function doPost(e) {
 }
 
 function doGet(e) {
-  var p = (e && e.parameter) || {};
-  return json_(read_(String(p.action || ''), p.key || p.token || ''));
+  return json_({ ok: false, error: 'post required' });
 }
 
 function json_(obj) {
